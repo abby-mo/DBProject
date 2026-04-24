@@ -20,14 +20,43 @@ def add_item(new_item: Item = None):
     new_item - An Item object containing a new item to be inserted into the DB in the item table.
         new_item and its attributes will never be None.
     """
-    raise NotImplementedError("you must implement this function")
+
+    print("test")
+    print(new_item.item_id)
+    print(new_item.product_name)
+    print(new_item.brand)
+    print(new_item.category)
+    print(new_item.manufact)
+    print(new_item.current_price)
+    print(new_item.start_year)
+    print(new_item.num_owned)
+
+    # query_add_item = "INSERT into Item (i_item_sk, i_item_id, i_rec_start_date, i_product_name, i_brand, i_class, i_category, i_manufact, i_current_price, i_num_owned) VALUES ("
+
+    # #get the i_item_sk number ()
+    # query_get_item_sk = "SELECT MAX(i_item_sk) + 1 FROM Item;"
+    # cur.execute(query_get_item_sk)
+    # next_i_item_sk = cur.fetchall()
+
+    
+    
+
+
+    #raise NotImplementedError("you must implement this function")
 
 
 def add_customer(new_customer: Customer = None):
-    """
-    new_customer - A Customer object containing a new customer to be inserted into the DB in the customer table.
-        new_customer and its attributes will never be None.
-    """
+    print("ADDING CUSTOMER")
+    cur.execute("SELECT MAX(c_customer_sk) + 1 FROM customer")
+    new_cust_sk = cur.fetchone()[0]
+
+    cur.execute("SELECT MAX(ca_address_sk) + 1 FROM customer_address")
+    new_addr_sk = cur.fetchone()[0]
+
+    # """wh
+    # new_customer - A Customer object containing a new customer to be inserted into the DB in the customer table.
+    #     new_customer and its attributes will never be None.
+    # """
     raise NotImplementedError("you must implement this function")
 
 
@@ -74,6 +103,7 @@ def grant_extension(item_id: str = None, customer_id: str = None):
     raise NotImplementedError("you must implement this function")
 
 
+# This function was written by Lilly
 def get_filtered_items(filter_attributes: Item = None,
                        use_patterns: bool = False,
                        min_price: float = -1,
@@ -83,14 +113,138 @@ def get_filtered_items(filter_attributes: Item = None,
     """
     Returns a list of Item objects matching the filters.
     """
-    raise NotImplementedError("you must implement this function")
+    #selecting them in a specified order of the item OBJECT to make this easier to organize
+    # skipping some attributes that are not needed : item sk, class
+    query = "Select i_item_id, i_product_name, i_brand, i_category, i_manufact, i_current_price, YEAR(i_rec_start_date), i_num_owned FROM item"
+
+    query_bits = []
+    param_bits = []
+
+    # for reference (not actually used)
+    # neg_one_attributes_arr = [ (filter_attributes.current_price, "i_current_price"), (filter_attributes.start_year, "i_start_year"), (filter_attributes.num_owned, "i_num_owned")]
+
+    # attributes
+    if filter_attributes != None: 
+         # creating tuples of information
+        none_attributes_arr = [
+        (filter_attributes.item_id, "i_item_id"),
+        (filter_attributes.product_name, "i_product_name"),
+        (filter_attributes.brand, "i_brand"),
+        (filter_attributes.category, "i_category"),
+        (filter_attributes.manufact, "i_manufact")]
+
+        for value, column in none_attributes_arr:
+            if(value != None):
+                if(use_patterns == True):
+                    query_bits.append(f"{column} LIKE ?")
+                    param_bits.append(value)
+                else:
+                    query_bits.append(f"{column} = ?")
+                    param_bits.append(value)
 
 
+    # price
+    if(min_price != -1):
+        query_bits.append(f"i_current_price >= ?")
+        param_bits.append(min_price)
+    
+    if(max_price != -1):
+        query_bits.append(f"i_current_price <= ?")
+        param_bits.append(max_price)
+    
+    # year
+    if(min_start_year != -1):
+        query_bits.append(f"YEAR(i_rec_start_date) >= ?")
+        param_bits.append(min_start_year)
+    
+    if(max_start_year != -1):
+        query_bits.append(f"YEAR(i_rec_start_date) <= ?")
+        param_bits.append(max_start_year)
+    
+   
+    if query_bits:
+        # the list is empty
+        query += " WHERE "
+        for i in range(len(query_bits)):
+            query += query_bits[i]
+            if( i < len(query_bits) - 1):
+                query += " AND "
+
+
+    query += ";"
+
+    #testing that the query works (remove later)
+    print("Test print: " + query)
+
+
+    # executing and fetching the query
+    cur.execute(query, param_bits)
+    rows = cur.fetchall()
+
+
+    return_items = [] # intializing list of item objects
+
+    # creating an Item object instance
+    for row in rows:
+        return_item = Item(
+            item_id = row[0].strip(),
+            product_name = row[1].strip(),
+            brand = row[2].strip(), 
+            category = row[3].strip(), 
+            manufact = row[4].strip(),
+            current_price = row[5],
+            start_year = row[6],
+            num_owned = row[7]
+        )
+        return_items.append(return_item)
+
+
+    return return_items # returns a list of item objects
+
+
+    #raise NotImplementedError("you must implement this function")
+
+# this function was written by Abby
 def get_filtered_customers(filter_attributes: Customer = None, use_patterns: bool = False) -> list[Customer]:
     """
     Returns a list of Customer objects matching the filters.
     """
-    raise NotImplementedError("you must implement this function")
+    query = """
+        SELECT c.c_customer_id, c.c_first_name, c.c_last_name, c.c_email_address, c.c_current_addr_sk, ca.ca_street_numer, ca.ca_street_name, ca.ca_city, ca.ca_state, ca_zip
+        FROM customer c
+        JOIN customer_addres ca ON c.current_addr_sk = ca.ca_address_sk
+        WHERE 1=1
+    """
+
+    params = []
+    op = "LIKE" if use_patterns == True else "="
+
+    if filter_attributes.customer_id is not None:
+        query += f" AND c.c_customer_id {op} ?"
+        params.append(filter_attributes.customer_id)
+    if filter_attributes.name is not None:
+        query += f" AND CONCAT(c.c_first_name, ' ', c.c_last_namee) {op} ?"
+        params.append(filter_attributes.name)
+    if filter_attributes.email is not None:
+        query += f" AND c.c_email_address {op} ?"
+        params.append(filter_attributes.email)
+    if filter_attributes.address is not None:
+        query += f" AND CONCAT(ca.ca_street_number, ' ', ca.ca_street_name, ' ' , ca.ca_city, ' ', ca.ca_state, ' ' , ca.ca_zip {op} ?)"
+        params.append(filter_attributes.address)
+
+    cur.execute(query, params)
+    rows = cur.fetchall()
+
+    customers = []
+    for row in rows:
+        address = f"{row[4]} {row[5]}, {row[6]} , {row[7]}  {row[8]}"
+        customers.append(Customer(
+            customer_id = row{0},
+            name = row{1} + ' ' + row{2},
+            email_address = row{3},
+            address = address   
+        ))
+    return customers
 
 
 def get_filtered_rentals(filter_attributes: Rental = None,
@@ -144,6 +298,7 @@ def line_length(item_id: str = None) -> int:
     """
     Returns how many people are on the waitlist for this item.
     """
+    
     raise NotImplementedError("you must implement this function")
 
 
@@ -151,12 +306,17 @@ def save_changes():
     """
     Commits all changes made to the db.
     """
-    raise NotImplementedError("you must implement this function")
+    conn.commit()
+
 
 
 def close_connection():
     """
     Closes the cursor and connection.
     """
-    raise NotImplementedError("you must implement this function")
+    if cur:
+        cur.close()
+    if conn:
+        conn.close()
+
 
