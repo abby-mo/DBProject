@@ -265,7 +265,6 @@ def get_filtered_rentals(filter_attributes: Rental = None,
         WHERE 1=1
     """
     params = []
-    op = "LIKE" if use_patterns else "="
 
     if filter_attributes.item_id is not None:
         query += f" AND item_id = ?"
@@ -313,17 +312,16 @@ def get_filtered_rental_histories(filter_attributes: RentalHistory = None,
                                   max_due_date: str = None,
                                   min_return_date: str = None,
                                   max_return_date: str = None) -> list[RentalHistory]:
-   """
-    Returns a list of RentalHistory objects matching the filters.
-    
     """
-   
-   query = """
+    Returns a list of RentalHistory objects matching the filters.
+    """
+
+    query = """
         SELECT item_id, customer_id, rental_date, due_date, return_date
         FROM rental_history
         WHERE 1=1
     """
-   params = []
+    params = []
 
     if filter_attributes.item_id is not None:
         query += " AND item_id = ?"
