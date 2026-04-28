@@ -99,13 +99,7 @@ def convert_address(unsplit_address: str = None):
 
 # This function was written by Lilly & Abby
 def add_customer(new_customer: Customer = None):
-    # print("ADDING CUSTOMER")
-    # cur.execute("SELECT MAX(c_customer_sk) + 1 FROM customer")
-    # new_cust_sk = cur.fetchone()[0]
-
-    # cur.execute("SELECT MAX(ca_address_sk) + 1 FROM customer_address")
-    # new_addr_sk = cur.fetchone()[0]
-
+    
     """
         new_customer - A Customer object containing a new customer to be inserted into the DB in the customer table.
         new_customer and its attributes will never be None.
@@ -113,12 +107,6 @@ def add_customer(new_customer: Customer = None):
 
     # getting new customer address : "123 Main St, Springfield, IL 62701"
 
-    # cust_addr_unprocessed = new_customer.address
-    # comma_sep_addr = cust_addr_unprocessed.split(',') # split to 123 main street;  Springfield; IL 62701
-    # space_sep_street = comma_sep_addr.split(' ')
-    # street_num = space_sep_street[0].trim()
-    # street_name = ""
-    
     addr_query = """
         INSERT into customer_address(ca_address_sk, ca_street_number, ca_street_name, ca_city, ca_state, ca_zip)
         VALUES(?,?,?,?,?,?)
@@ -302,7 +290,7 @@ def return_item(item_id: str = None, customer_id: str = None):
 
     # insert into rental history
     insert_query = """
-        Insert into rental_history(item_id, customer_id, rental_date, due_date)
+        INSERT INTO rental_history(item_id, customer_id, rental_date, due_date, return_date)
         VALUES(
         ?,
         ?,
@@ -313,7 +301,7 @@ def return_item(item_id: str = None, customer_id: str = None):
 
     date_today = str(date.today()) # get today's date
 
-    curr.execute(insert_query, (item_id,customer_id,item_id,customer_id,item_id,customer_id,date_today))
+    cur.execute(insert_query, (item_id,customer_id,item_id,customer_id,item_id,customer_id,date_today))
     #1 - values 1 - item id
     #2 - values 2 - customer id
     #3 - values 3 - select 1 - rental date
@@ -343,7 +331,7 @@ def grant_extension(item_id: str = None, customer_id: str = None):
         SELECT due_date FROM rental
         WHERE item_id = ? and customer_id = ?
     """
-    curr.execute (select_date_query,(item_id,customer_id))
+    cur.execute (select_date_query,(item_id,customer_id))
     rows = cur.fetchone()
 
     new_due_date = str(rows[0] + timedelta(days=14))
@@ -381,7 +369,7 @@ def get_filtered_items(filter_attributes: Item = None,
     # neg_one_attributes_arr = [ (filter_attributes.current_price, "i_current_price"), (filter_attributes.start_year, "i_start_year"), (filter_attributes.num_owned, "i_num_owned")]
 
     # attributes
-    if filter_attributes != None: 
+    if filter_attributes is not None: 
          # creating tuples of information
         none_attributes_arr = [
         (filter_attributes.item_id, "i_item_id"),
@@ -391,7 +379,7 @@ def get_filtered_items(filter_attributes: Item = None,
         (filter_attributes.manufact, "i_manufact")]
 
         for value, column in none_attributes_arr:
-            if(value != None):
+            if(value is not None):
                 if(use_patterns == True):
                     query_bits.append(f"{column} LIKE ?")
                     stuff_bits.append(value)
