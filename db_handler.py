@@ -79,19 +79,90 @@ def edit_customer(original_customer_id: str = None, new_customer: Customer = Non
     new_customer - A Customer object containing attributes to update. If an attribute is None, it should not be altered.
     """
 
-    # query = """
-    #     UPDATE customer SET
-    # """
-    # query
-    #
-    # query += "WHERE customer_id = ?"
-    #
-    #
-    #
-    # cur.execute(query,())
-    #
+    query = """
+        UPDATE customer SET
+    """
+    param = []
 
-    raise NotImplementedError("you must implement this function")
+    if new_customer.customer_id is not None:
+        query+= "c_customer_id = ?"
+        param.append(new_customer.customer_id)
+        if new_customer.name is not None or new_customer.address is not None or new_customer.email is not None:
+            query+= ","
+
+    if new_customer.name is not None:
+        query+= "c_first_name = ?"
+        query+= ","
+        query+= "c_last_name = ?"
+        name_parts = new_customer.name.split(' ',1)
+        param.append(name_parts[0])
+        param.append(name_parts[1])
+        if new_customer.email is not None:
+            query+= ","
+
+    if new_customer.address is not None:
+        sk_address_query = """
+            SELECT c_current_addr_sk FROM customer
+            WHERE c_customer_id = ?
+        """
+        cur.execute(sk_address_query, (original_customer_id,))
+        received_address_sk = cur.fetchone()[0]
+
+        address_query = """
+            UPDATE customer_address
+            SET ca_street_number = ?,
+            ca_street_name = ?,
+            ca_city = ?,
+            ca_state = ?,
+            ca_zip = ?
+            WHERE ca_address_sk = ?
+        """
+
+        # The address field should be a single human-readable string, e.g.: "123 Main St, Springfield, IL 62701"
+
+        #split full address into:
+        # - 123 Main St
+        # - Springfield
+        # - IL 62701
+        address_parts = new_customer.address.split(',') # MUST BE NEW ADDRESS NOT FROM QUERY
+
+        # split 123 Main st into street num and street name
+        a_zero = address_parts[0].split(' ')
+        a_street_num = a_zero[0]
+        a_street_name = ""
+        for i in range(1, len(a_zero)):
+            if i > 1:
+                a_street_name += " "
+            a_street_name += a_zero[i]
+
+        # get city
+        a_city = address_parts[1].strip()
+
+        # split IL 62701 into state and zip code
+        a_two = address_parts[2].strip().split(' ')
+        a_state = a_two[0]
+        a_zip = a_two[1]
+
+        cur.execute(address_query,
+                    (a_street_num,a_street_name,a_city,a_state,a_zip,
+                     received_address_sk))
+
+
+    if new_customer.email is not None:
+        query+= "c_email_address = ?"
+        param.append(new_customer.email)
+
+    query += " WHERE c_customer_id = ?"
+
+    param.append(original_customer_id)
+
+    # ONLY EXECUTES if email, name or id is updated
+    # WHY: because address could be updated but we wouldn't need to run this command
+    if new_customer.email is not None or new_customer.name is not None or new_customer.customer_id is not None:
+        cur.execute(query,param)
+
+
+    #raise NotImplementedError("you must implement this function")
 
 # This function was written by Lilly
 def rent_item(item_id: str = None, customer_id: str = None):
