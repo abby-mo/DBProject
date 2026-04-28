@@ -429,6 +429,8 @@ def get_filtered_items(filter_attributes: Item = None,
 
     query += " ORDER BY i_rec_start_date DESC" # making it consistently grabs the right one
 
+    if filter_attributes is not None and filter_attributes.item_id is not None and not use_patterns:
+        query += " LIMIT 1"
 
     # executing and fetching the query
     cur.execute(query, stuff_bits)
