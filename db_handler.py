@@ -73,7 +73,16 @@ def rent_item(item_id: str = None, customer_id: str = None):
     item_id - A string containing the Item ID for the item being rented.
     customer_id - A string containing the customer id of the customer renting the item.
     """
-    raise NotImplementedError("you must implement this function")
+    # query = f"Insert into Rental(item_id, customer_id, rental_date,due_date) VALUES ('{item_id}', '{customer_id}', '{date.today()}', '{date.today() + timedelta(days=14)}') "
+    query = """
+        INSERT INTO rental(item_id, customer_id, rental_date, due_date)
+        VALUES(?,?,?,?)
+    """
+
+    cur.execute(query,(item_id,customer_id,str(date.today()),str(date.today()+timedelta(days=14))))
+    return     # return nothing
+
+    #raise NotImplementedError("you must implement this function")
 
 
 def waitlist_customer(item_id: str = None, customer_id: str = None) -> int:
@@ -93,7 +102,38 @@ def return_item(item_id: str = None, customer_id: str = None):
     """
     Moves a rental from rental to rental_history with return_date = today.
     """
-    raise NotImplementedError("you must implement this function")
+
+    # insert into rental history
+    insert_query = """
+        Insert into rental_history(item_id, customer_id, rental_date, due_date)
+        VALUES(
+        ?,
+        ?,
+        (SELECT rental_date FROM rental WHERE item_id = ? AND customer_id = ?),
+        (SELECT due_date FROM rental WHERE item_id = ? AND customer_id = ?),
+        ?
+        )"""
+    date_today = str(date.today())
+    curr.execute(insert_query, (item_id,customer_id,item_id,customer_id,item_id,customer_id,date_today))
+    #1 - values 1 - item id
+    #2 - values 2 - customer id
+    #3 - values 3 - select 1 - rental date
+    #4 - values 3 - select 2 - rental date
+    #5 - values 4 - select 1 - due date
+    #6 - values 4 - select 2 - due date
+    #7 - value 5 - today's date
+
+    # delete from rental
+    delete_query = """
+        Delete FROM rental
+        WHERE item_id = ?
+        AND customer_id = ?
+    """
+    curr.execute(delete_query,(item_id,customer_id))
+
+    return
+
+    #raise NotImplementedError("you must implement this function")
 
 
 def grant_extension(item_id: str = None, customer_id: str = None):
@@ -118,7 +158,7 @@ def get_filtered_items(filter_attributes: Item = None,
     query = "Select i_item_id, i_product_name, i_brand, i_category, i_manufact, i_current_price, YEAR(i_rec_start_date), i_num_owned FROM item"
 
     query_bits = []
-    param_bits = []
+    stuff_bits = []
 
     # for reference (not actually used)
     # neg_one_attributes_arr = [ (filter_attributes.current_price, "i_current_price"), (filter_attributes.start_year, "i_start_year"), (filter_attributes.num_owned, "i_num_owned")]
@@ -137,29 +177,29 @@ def get_filtered_items(filter_attributes: Item = None,
             if(value != None):
                 if(use_patterns == True):
                     query_bits.append(f"{column} LIKE ?")
-                    param_bits.append(value)
+                    stuff_bits.append(value)
                 else:
                     query_bits.append(f"{column} = ?")
-                    param_bits.append(value)
+                    stuff_bits.append(value)
 
 
     # price
     if(min_price != -1):
         query_bits.append(f"i_current_price >= ?")
-        param_bits.append(min_price)
+        stuff_bits.append(min_price)
     
     if(max_price != -1):
         query_bits.append(f"i_current_price <= ?")
-        param_bits.append(max_price)
+        stuff_bits.append(max_price)
     
     # year
     if(min_start_year != -1):
         query_bits.append(f"YEAR(i_rec_start_date) >= ?")
-        param_bits.append(min_start_year)
+        stuff_bits.append(min_start_year)
     
     if(max_start_year != -1):
         query_bits.append(f"YEAR(i_rec_start_date) <= ?")
-        param_bits.append(max_start_year)
+        stuff_bits.append(max_start_year)
     
    
     if query_bits:
@@ -171,14 +211,14 @@ def get_filtered_items(filter_attributes: Item = None,
                 query += " AND "
 
 
-    query += ";"
+    #query += ";"
 
     #testing that the query works (remove later)
     print("Test print: " + query)
 
 
     # executing and fetching the query
-    cur.execute(query, param_bits)
+    cur.execute(query, stuff_bits)
     rows = cur.fetchall()
 
 
@@ -249,7 +289,7 @@ def get_filtered_customers(filter_attributes: Customer = None, use_patterns: boo
         ))
     return customers
 
-
+# This was written by Abby
 def get_filtered_rentals(filter_attributes: Rental = None,
                          min_rental_date: str = None,
                          max_rental_date: str = None,
@@ -304,7 +344,7 @@ def get_filtered_rentals(filter_attributes: Rental = None,
         ))
     return rentals
 
-
+# This was written by Abby
 def get_filtered_rental_histories(filter_attributes: RentalHistory = None,
                                   min_rental_date: str = None,
                                   max_rental_date: str = None,
@@ -371,7 +411,7 @@ def get_filtered_rental_histories(filter_attributes: RentalHistory = None,
         ))
     return histories
 
-
+# This was written by Abby
 def get_filtered_waitlist(filter_attributes: Waitlist = None,
                           min_place_in_line: int = -1,
                           max_place_in_line: int = -1) -> list[Waitlist]:
@@ -410,7 +450,7 @@ def get_filtered_waitlist(filter_attributes: Waitlist = None,
         ))
     return waitlist
 
-
+# This was written by Abby
 def number_in_stock(item_id: str = None) -> int:
     """
     Returns num_owned - active rentals. Returns -1 if item doesn't exist.
@@ -439,7 +479,7 @@ def number_in_stock(item_id: str = None) -> int:
 
     return num_owned - active_rentals
 
-
+# This was written by Abby
 def place_in_line(item_id: str = None, customer_id: str = None) -> int:
     """
     Returns the customer's place_in_line, or -1 if not on waitlist.
@@ -458,7 +498,7 @@ def place_in_line(item_id: str = None, customer_id: str = None) -> int:
 
     return int(row[0])
 
-
+# This was written by Abby
 def line_length(item_id: str = None) -> int:
     """
     Returns how many people are on the waitlist for this item.
@@ -472,7 +512,7 @@ def line_length(item_id: str = None) -> int:
     cur.execute(query, (item_id,))
     return cur.fetchone()[0]
 
-
+# This was written by team
 def save_changes():
     """
     Commits all changes made to the db.
@@ -480,7 +520,7 @@ def save_changes():
     conn.commit()
 
 
-
+# This was written by team
 def close_connection():
     """
     Closes the cursor and connection.
