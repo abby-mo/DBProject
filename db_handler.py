@@ -14,32 +14,45 @@ conn = connect(user=DB_CONFIG["username"], password=DB_CONFIG["password"], host=
 
 cur = conn.cursor()
 
-
+# This function was written by lilly
 def add_item(new_item: Item = None):
     """
     new_item - An Item object containing a new item to be inserted into the DB in the item table.
         new_item and its attributes will never be None.
     """
+    #
+    # print("test")
+    # print(new_item.item_id)
+    # print(new_item.product_name)
+    # print(new_item.brand)
+    # print(new_item.category)
+    # print(new_item.manufact)
+    # print(new_item.current_price)
+    # print(new_item.start_year)
+    # print(new_item.num_owned)
 
-    print("test")
-    print(new_item.item_id)
-    print(new_item.product_name)
-    print(new_item.brand)
-    print(new_item.category)
-    print(new_item.manufact)
-    print(new_item.current_price)
-    print(new_item.start_year)
-    print(new_item.num_owned)
-
-    # query_add_item = "INSERT into Item (i_item_sk, i_item_id, i_rec_start_date, i_product_name, i_brand, i_class, i_category, i_manufact, i_current_price, i_num_owned) VALUES ("
-
-    # #get the i_item_sk number ()
-    # query_get_item_sk = "SELECT MAX(i_item_sk) + 1 FROM Item;"
-    # cur.execute(query_get_item_sk)
-    # next_i_item_sk = cur.fetchall()
-
+    query_add_item = """
     
+        INSERT into Item (i_item_sk, i_item_id, i_rec_start_date, i_product_name, i_brand, i_class, i_category, i_manufact, i_current_price, i_num_owned) 
     
+        VALUES(?,?,?,?,?,?,?,?,?,?)
+    """
+
+    # #get the i_item_sk number
+    query_get_item_sk = "SELECT MAX(i_item_sk) + 1 FROM Item"
+    cur.execute(query_get_item_sk)
+    next_i_item_sk = cur.fetchone()[0] # gets first value from tuple
+
+    new_start_date = str(new_item.start_year) + "-01-01"
+
+    cur.execute(query_add_item,
+                 (next_i_item_sk,new_item.item_id, new_start_date,
+                  new_item.product_name, new_item.brand, None,
+                  new_item.category, new_item.manufact,
+                  new_item.current_price, new_item.num_owned))
+
+
+    #leaving class as null/none according to discussion https://ufl.instructure.com/courses/554442/discussion_topics/5080572?entry_id=29991105
 
 
     #raise NotImplementedError("you must implement this function")
@@ -65,9 +78,22 @@ def edit_customer(original_customer_id: str = None, new_customer: Customer = Non
     original_customer_id - A string containing the customer id for the customer to be edited.
     new_customer - A Customer object containing attributes to update. If an attribute is None, it should not be altered.
     """
+
+    # query = """
+    #     UPDATE customer SET
+    # """
+    # query
+    #
+    # query += "WHERE customer_id = ?"
+    #
+    #
+    #
+    # cur.execute(query,())
+    #
+
     raise NotImplementedError("you must implement this function")
 
-
+# This function was written by Lilly
 def rent_item(item_id: str = None, customer_id: str = None):
     """
     item_id - A string containing the Item ID for the item being rented.
@@ -89,15 +115,41 @@ def waitlist_customer(item_id: str = None, customer_id: str = None) -> int:
     """
     Returns the customer's new place in line.
     """
-    raise NotImplementedError("you must implement this function")
+    insert_query = """
+        Insert into waitlist(item_id,customer_id,place_in_line)
+        VALUES (?,?,?)
+    """
+
+    line_length_return = line_length(item_id)
+
+    cur.execute(insert_query, (item_id,customer_id, line_length_return+1))
+
+    return line_length_return+1
+    #raise NotImplementedError("you must implement this function")
 
 def update_waitlist(item_id: str = None):
     """
     Removes person at position 1 and shifts everyone else down by 1.
     """
-    raise NotImplementedError("you must implement this function")
+
+    query = """
+        DELETE from waitlist
+        WHERE place_in_line = 1 AND item_id = ?
+    """
+
+    cur.execute(query, (item_id,))
+
+    update_query = """
+        UPDATE waitlist
+        SET place_in_line = place_in_line - 1 
+        WHERE item_id = ?
+    """
+    cur.execute(update_query, (item_id,))
 
 
+#    raise NotImplementedError("you must implement this function")
+
+# This function was written by Lilly
 def return_item(item_id: str = None, customer_id: str = None):
     """
     Moves a rental from rental to rental_history with return_date = today.
@@ -113,7 +165,9 @@ def return_item(item_id: str = None, customer_id: str = None):
         (SELECT due_date FROM rental WHERE item_id = ? AND customer_id = ?),
         ?
         )"""
-    date_today = str(date.today())
+
+    date_today = str(date.today()) # get today's date
+
     curr.execute(insert_query, (item_id,customer_id,item_id,customer_id,item_id,customer_id,date_today))
     #1 - values 1 - item id
     #2 - values 2 - customer id
@@ -129,18 +183,36 @@ def return_item(item_id: str = None, customer_id: str = None):
         WHERE item_id = ?
         AND customer_id = ?
     """
-    curr.execute(delete_query,(item_id,customer_id))
+    cur.execute(delete_query,(item_id,customer_id))
 
     return
 
     #raise NotImplementedError("you must implement this function")
 
-
+# This function was written by Lilly
 def grant_extension(item_id: str = None, customer_id: str = None):
     """
     Adds 14 days to the due_date.
     """
-    raise NotImplementedError("you must implement this function")
+    select_date_query = """
+        SELECT due_date FROM rental
+        WHERE item_id = ? and customer_id = ?
+    """
+    curr.execute (select_date_query,(item_id,customer_id))
+    rows = cur.fetchone()
+
+    new_due_date = str(rows[0] + timedelta(days=14))
+
+    query = """
+        UPDATE rental
+        SET due_date  = ?
+        WHERE item_id = ? AND customer_id = ?    
+    """
+    cur.execute(query, (new_due_date, item_id,customer_id))
+
+    return
+
+    #raise NotImplementedError("you must implement this function")
 
 
 # This function was written by Lilly
