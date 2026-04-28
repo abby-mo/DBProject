@@ -363,17 +363,11 @@ def get_filtered_items(filter_attributes: Item = None,
     # skipping some attributes that are not needed : item sk, class
     # query = "Select i_item_id, i_product_name, i_brand, i_category, i_manufact, i_current_price, YEAR(i_rec_start_date), i_num_owned FROM itemi1"
     query = """
-    SELECT i_item_id, i_product_name, i_brand, i_category, i_manufact, 
-           i_current_price, YEAR(i_rec_start_date), i_num_owned
-    FROM item i1
-    WHERE i_rec_start_date = (
-        SELECT MAX(i_rec_start_date)
-        FROM item i2
-        WHERE i2.i_item_id = i1.i_item_id
-    )
+        SELECT i_item_id, i_product_name, i_brand, i_category, i_manufact,
+               i_current_price, YEAR(i_rec_start_date), i_num_owned
+        FROM item
+        WHERE 1=1
     """
-
-
 
     query_bits = []
     stuff_bits = []
@@ -400,33 +394,32 @@ def get_filtered_items(filter_attributes: Item = None,
                     query_bits.append(f"{column} = ?")
                     stuff_bits.append(value)
 
-
-    # price
-    if(min_price != -1):
-        query_bits.append(f"i_current_price >= ?")
+    # PRICE
+    if min_price != -1:
+        query_bits.append("i_current_price >= ?")
         stuff_bits.append(min_price)
-    
-    if(max_price != -1):
-        query_bits.append(f"i_current_price <= ?")
+
+    if max_price != -1:
+        query_bits.append("i_current_price <= ?")
         stuff_bits.append(max_price)
-    
-    # year
-    if(min_start_year != -1):
-        query_bits.append(f"YEAR(i_rec_start_date) >= ?")
+
+    # YEAR
+    if min_start_year != -1:
+        query_bits.append("YEAR(i_rec_start_date) >= ?")
         stuff_bits.append(min_start_year)
-    
-    if(max_start_year != -1):
-        query_bits.append(f"YEAR(i_rec_start_date) <= ?")
+
+    if max_start_year != -1:
+        query_bits.append("YEAR(i_rec_start_date) <= ?")
         stuff_bits.append(max_start_year)
-    
-   
+        
     if query_bits:
-        # the list is empty
         query += " AND "
         for i in range(len(query_bits)):
             query += query_bits[i]
-            if( i < len(query_bits) - 1):
+            if i < len(query_bits) - 1:
                 query += " AND "
+
+    query += " ORDER BY i_rec_start_date DESC"
 
 
     #query += ";"
