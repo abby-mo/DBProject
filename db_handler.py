@@ -20,17 +20,8 @@ def add_item(new_item: Item = None):
     new_item - An Item object containing a new item to be inserted into the DB in the item table.
         new_item and its attributes will never be None.
     """
-    #
-    # print("test")
-    # print(new_item.item_id)
-    # print(new_item.product_name)
-    # print(new_item.brand)
-    # print(new_item.category)
-    # print(new_item.manufact)
-    # print(new_item.current_price)
-    # print(new_item.start_year)
-    # print(new_item.num_owned)
-
+   
+    # inserts directly into item
     query_add_item = """
     
         INSERT into Item (i_item_sk, i_item_id, i_rec_start_date, i_product_name, i_brand, i_class, i_category, i_manufact, i_current_price, i_num_owned) 
@@ -43,7 +34,7 @@ def add_item(new_item: Item = None):
     cur.execute(query_get_item_sk)
     next_i_item_sk = cur.fetchone()[0] # gets first value from tuple
 
-    new_start_date = str(new_item.start_year) + "-01-01"
+    new_start_date = str(new_item.start_year) + "-01-01" # turns the year into date format
 
     cur.execute(query_add_item,
                  (next_i_item_sk,new_item.item_id, new_start_date,
@@ -66,7 +57,7 @@ def convert_address(unsplit_address: str = None):
     # - Springfield
     # - IL 62701
 
-    if not unsplit_address:
+    if not unsplit_address: # prevents converting errors
      return None
     
     # MUST BE NEW ADDRESS NOT FROM QUERY
@@ -78,6 +69,7 @@ def convert_address(unsplit_address: str = None):
     a_street_num = a_zero[0].strip()
     a_street_name = ""
 
+    # Loops through to add all parts of a multiword street name like Main Ave St
     for i in range(1, len(a_zero)):
         if i > 1:
             a_street_name += " "
@@ -91,6 +83,7 @@ def convert_address(unsplit_address: str = None):
     a_state = a_two[0]
     a_zip = a_two[1]
 
+    # Packs a list for result
     addr_result = [a_street_num,a_street_name,a_city, a_state,a_zip]
 
     return addr_result
@@ -134,15 +127,16 @@ def add_customer(new_customer: Customer = None):
         VALUES(?,?,?,?,?,?)
     """
 
+    # RETRIEVING PARAMATER DATA
     
     # retrieving the next customer_sk
     get_addr_sk = """
         SELECT MAX(c_customer_sk) + 1 FROM customer
     """
     cur.execute(get_addr_sk)
-    new_cust_sk = cur.fetchone()[0] 
+    new_cust_sk = cur.fetchone()[0]  # getting the customer's sk from result
 
-    new_cust_id = new_customer.customer_id
+    new_cust_id = new_customer.customer_id 
 
     new_cust_first_name, new_cust_last_name = new_customer.name.split(' ', 1)
 
@@ -165,23 +159,31 @@ def edit_customer(original_customer_id: str = None, new_customer: Customer = Non
     """
     param = []
 
+    # Adds to query if customer id is changed
     if new_customer.customer_id is not None:
         query+= "c_customer_id = ?"
         param.append(new_customer.customer_id)
+        # Adds comma for next case
         if new_customer.name is not None or new_customer.address is not None or new_customer.email is not None:
             query+= ","
 
+    # Adds to query if customer name is changed
     if new_customer.name is not None:
+        # building paramters
         query+= "c_first_name = ?"
         query+= ","
         query+= "c_last_name = ?"
+        # splits the parsed in name 
         name_parts = new_customer.name.split(' ',1)
         param.append(name_parts[0])
         param.append(name_parts[1])
+        # Adds comma for next case
         if new_customer.email is not None:
             query+= ","
 
+    # Adds to query if customer address is changed
     if new_customer.address is not None:
+        # Reterieve the current address sk from customer
         sk_address_query = """
             SELECT c_current_addr_sk FROM customer
             WHERE c_customer_id = ?
@@ -189,6 +191,7 @@ def edit_customer(original_customer_id: str = None, new_customer: Customer = Non
         cur.execute(sk_address_query, (original_customer_id,))
         received_address_sk = cur.fetchone()[0]
 
+        # Update customer address
         address_query = """
             UPDATE customer_address
             SET ca_street_number = ?,
@@ -210,6 +213,7 @@ def edit_customer(original_customer_id: str = None, new_customer: Customer = Non
                      received_address_sk))
 
 
+    # Adds to query if customer email is changed
     if new_customer.email is not None:
         query+= "c_email_address = ?"
         param.append(new_customer.email)
@@ -232,7 +236,7 @@ def rent_item(item_id: str = None, customer_id: str = None):
     item_id - A string containing the Item ID for the item being rented.
     customer_id - A string containing the customer id of the customer renting the item.
     """
-    # query = f"Insert into Rental(item_id, customer_id, rental_date,due_date) VALUES ('{item_id}', '{customer_id}', '{date.today()}', '{date.today() + timedelta(days=14)}') "
+    # Using CURDATE because of discussion post.  
     query = """
         INSERT INTO rental(item_id, customer_id, rental_date, due_date)
         VALUES(?,?,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 14 DAY))
@@ -243,7 +247,7 @@ def rent_item(item_id: str = None, customer_id: str = None):
 
     #raise NotImplementedError("you must implement this function")
 
-
+# This function was written by Lilly
 def waitlist_customer(item_id: str = None, customer_id: str = None) -> int:
     """
     Returns the customer's new place in line.
@@ -253,18 +257,20 @@ def waitlist_customer(item_id: str = None, customer_id: str = None) -> int:
         VALUES (?,?,?)
     """
 
-    line_length_return = line_length(item_id)
+    line_length_return = line_length(item_id) # gets the length of the line using existing function
 
     cur.execute(insert_query, (item_id,customer_id, line_length_return+1))
 
     return line_length_return+1
     #raise NotImplementedError("you must implement this function")
 
+# This function was written by Lilly
 def update_waitlist(item_id: str = None):
     """
     Removes person at position 1 and shifts everyone else down by 1.
     """
 
+    # Deletes the person at position 1
     query = """
         DELETE from waitlist
         WHERE place_in_line = 1 AND item_id = ?
@@ -272,6 +278,7 @@ def update_waitlist(item_id: str = None):
 
     cur.execute(query, (item_id,))
 
+    # Updates all other rows
     update_query = """
         UPDATE waitlist
         SET place_in_line = place_in_line - 1 
@@ -300,7 +307,6 @@ def return_item(item_id: str = None, customer_id: str = None):
         CURDATE()
         )"""
 
-    date_today = str(date.today()) # get today's date
 
     cur.execute(insert_query, (item_id,customer_id,item_id,customer_id,item_id,customer_id))
     #1 - values 1 - item id
@@ -328,6 +334,7 @@ def grant_extension(item_id: str = None, customer_id: str = None):
     """
     Adds 14 days to the due_date.
     """
+    # gets the dates
     select_date_query = """
         SELECT due_date FROM rental
         WHERE item_id = ? and customer_id = ?
@@ -337,6 +344,7 @@ def grant_extension(item_id: str = None, customer_id: str = None):
 
     new_due_date = str(rows[0] + timedelta(days=14))
 
+    # updates the rental
     query = """
         UPDATE rental
         SET due_date  = DATE_ADD(due_date,INTERVAL 14 DAY)
@@ -369,8 +377,8 @@ def get_filtered_items(filter_attributes: Item = None,
         WHERE 1=1
     """
 
-    query_bits = []
-    stuff_bits = []
+    query_bits = [] # holds parts of the query
+    stuff_bits = [] # holds the paramters
 
     # for reference (not actually used)
     # neg_one_attributes_arr = [ (filter_attributes.current_price, "i_current_price"), (filter_attributes.start_year, "i_start_year"), (filter_attributes.num_owned, "i_num_owned")]
@@ -419,19 +427,12 @@ def get_filtered_items(filter_attributes: Item = None,
             if i < len(query_bits) - 1:
                 query += " AND "
 
-    query += " ORDER BY i_rec_start_date DESC"
-
-
-    #query += ";"
-
-    #testing that the query works (remove later)
-    #print("Test print: " + query)
+    query += " ORDER BY i_rec_start_date DESC" # making it consistently grabs the right one
 
 
     # executing and fetching the query
     cur.execute(query, stuff_bits)
     rows = cur.fetchall()
-
 
     return_items = [] # intializing list of item objects
 
