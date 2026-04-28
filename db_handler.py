@@ -293,6 +293,7 @@ def return_item(item_id: str = None, customer_id: str = None):
         INSERT INTO rental_history(item_id, customer_id, rental_date, due_date, return_date)
         VALUES(
         ?,
+        
         ?,
         (SELECT rental_date FROM rental WHERE item_id = ? AND customer_id = ?),
         (SELECT due_date FROM rental WHERE item_id = ? AND customer_id = ?),
@@ -360,7 +361,19 @@ def get_filtered_items(filter_attributes: Item = None,
     """
     #selecting them in a specified order of the item OBJECT to make this easier to organize
     # skipping some attributes that are not needed : item sk, class
-    query = "Select i_item_id, i_product_name, i_brand, i_category, i_manufact, i_current_price, YEAR(i_rec_start_date), i_num_owned FROM item"
+    # query = "Select i_item_id, i_product_name, i_brand, i_category, i_manufact, i_current_price, YEAR(i_rec_start_date), i_num_owned FROM itemi1"
+    query = """
+    SELECT i_item_id, i_product_name, i_brand, i_category, i_manufact, 
+           i_current_price, YEAR(i_rec_start_date), i_num_owned
+    FROM item i1
+    WHERE i_rec_start_date = (
+        SELECT MAX(i_rec_start_date)
+        FROM item i2
+        WHERE i2.i_item_id = i1.i_item_id
+    )
+    """
+
+
 
     query_bits = []
     stuff_bits = []
@@ -409,7 +422,7 @@ def get_filtered_items(filter_attributes: Item = None,
    
     if query_bits:
         # the list is empty
-        query += " WHERE "
+        query += " AND "
         for i in range(len(query_bits)):
             query += query_bits[i]
             if( i < len(query_bits) - 1):
@@ -419,7 +432,7 @@ def get_filtered_items(filter_attributes: Item = None,
     #query += ";"
 
     #testing that the query works (remove later)
-    print("Test print: " + query)
+    #print("Test print: " + query)
 
 
     # executing and fetching the query
@@ -706,6 +719,8 @@ def number_in_stock(item_id: str = None) -> int:
         SELECT i_num_owned
         FROM item
         WHERE i_item_id = ?
+        ORDER BY i_rec_start_date DESC
+        LIMIT 1
     """
     cur.execute(query, (item_id,))
     row = cur.fetchone()
