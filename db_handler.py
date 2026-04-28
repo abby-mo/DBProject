@@ -57,21 +57,114 @@ def add_item(new_item: Item = None):
 
     #raise NotImplementedError("you must implement this function")
 
+def convert_address(unsplit_address: str = None):
 
+    # The address field should be a single human-readable string, e.g.: "123 Main St, Springfield, IL 62701"
+
+    #split full address into:
+    # - 123 Main St
+    # - Springfield
+    # - IL 62701
+
+    if not unsplit_address:
+     return None
+    
+    # MUST BE NEW ADDRESS NOT FROM QUERY
+    # Split full address
+    address_parts = unsplit_address.split(',') 
+
+    # split 123 Main st into street num and street name
+    a_zero = address_parts[0].split(' ')
+    a_street_num = a_zero[0].strip()
+    a_street_name = ""
+
+    for i in range(1, len(a_zero)):
+        if i > 1:
+            a_street_name += " "
+        a_street_name += a_zero[i]
+
+    # get city
+    a_city = address_parts[1].strip()
+
+    # split IL 62701 into state and zip code
+    a_two = address_parts[2].strip().split()
+    a_state = a_two[0]
+    a_zip = a_two[1]
+
+    addr_result = [a_street_num,a_street_name,a_city, a_state,a_zip]
+
+    return addr_result
+
+
+
+# This function was written by Lilly & Abby
 def add_customer(new_customer: Customer = None):
-    print("ADDING CUSTOMER")
-    cur.execute("SELECT MAX(c_customer_sk) + 1 FROM customer")
-    new_cust_sk = cur.fetchone()[0]
+    # print("ADDING CUSTOMER")
+    # cur.execute("SELECT MAX(c_customer_sk) + 1 FROM customer")
+    # new_cust_sk = cur.fetchone()[0]
 
-    cur.execute("SELECT MAX(ca_address_sk) + 1 FROM customer_address")
-    new_addr_sk = cur.fetchone()[0]
+    # cur.execute("SELECT MAX(ca_address_sk) + 1 FROM customer_address")
+    # new_addr_sk = cur.fetchone()[0]
 
-    # """wh
-    # new_customer - A Customer object containing a new customer to be inserted into the DB in the customer table.
-    #     new_customer and its attributes will never be None.
-    # """
-    raise NotImplementedError("you must implement this function")
+    """
+        new_customer - A Customer object containing a new customer to be inserted into the DB in the customer table.
+        new_customer and its attributes will never be None.
+    """
 
+    # getting new customer address : "123 Main St, Springfield, IL 62701"
+
+    # cust_addr_unprocessed = new_customer.address
+    # comma_sep_addr = cust_addr_unprocessed.split(',') # split to 123 main street;  Springfield; IL 62701
+    # space_sep_street = comma_sep_addr.split(' ')
+    # street_num = space_sep_street[0].trim()
+    # street_name = ""
+    
+    addr_query = """
+        INSERT into customer_address(ca_address_sk, ca_street_number, ca_street_name, ca_city, ca_state, ca_zip)
+        VALUES(?,?,?,?,?,?)
+
+    """
+
+    # retrieving the next customer address sk
+    get_addr_sk = """
+        SELECT MAX(ca_address_sk) + 1 FROM customer_address
+    """
+    cur.execute(get_addr_sk)
+    new_cust_addr_sk = cur.fetchone()[0] 
+
+    #convert string address to parts
+    addr_result = convert_address(new_customer.address)
+
+    #unpack the result
+    a_street_num, a_street_name, a_city, a_state, a_zip = addr_result
+
+    cur.execute(addr_query,(new_cust_addr_sk, a_street_num,a_street_name,a_city,a_state,a_zip))
+
+
+    customer_query = """
+        INSERT into customer(c_customer_sk, c_customer_id, c_first_name, c_last_name, c_email_address, c_current_addr_sk) 
+        VALUES(?,?,?,?,?,?)
+    """
+
+    
+    # retrieving the next customer_sk
+    get_addr_sk = """
+        SELECT MAX(c_customer_sk) + 1 FROM customer
+    """
+    cur.execute(get_addr_sk)
+    new_cust_sk = cur.fetchone()[0] 
+
+    new_cust_id = new_customer.customer_id
+
+    new_cust_first_name, new_cust_last_name = new_customer.name.split(' ', 1)
+
+    new_cust_email = new_customer.email
+
+    # new_cust_addr_sk = was retrieved earlier 
+
+    cur.execute(customer_query, (new_cust_sk,new_cust_id, new_cust_first_name,new_cust_last_name,new_cust_email,new_cust_addr_sk))
+
+    # raise NotImplementedError("you must implement this function")
 
 def edit_customer(original_customer_id: str = None, new_customer: Customer = None):
     """
@@ -118,30 +211,11 @@ def edit_customer(original_customer_id: str = None, new_customer: Customer = Non
             WHERE ca_address_sk = ?
         """
 
-        # The address field should be a single human-readable string, e.g.: "123 Main St, Springfield, IL 62701"
+        #convert string address to parts
+        addr_result = convert_address(new_customer.address)
 
-        #split full address into:
-        # - 123 Main St
-        # - Springfield
-        # - IL 62701
-        address_parts = new_customer.address.split(',') # MUST BE NEW ADDRESS NOT FROM QUERY
-
-        # split 123 Main st into street num and street name
-        a_zero = address_parts[0].split(' ')
-        a_street_num = a_zero[0]
-        a_street_name = ""
-        for i in range(1, len(a_zero)):
-            if i > 1:
-                a_street_name += " "
-            a_street_name += a_zero[i]
-
-        # get city
-        a_city = address_parts[1].strip()
-
-        # split IL 62701 into state and zip code
-        a_two = address_parts[2].strip().split(' ')
-        a_state = a_two[0]
-        a_zip = a_two[1]
+        #unpack the result
+        a_street_num, a_street_name, a_city, a_state, a_zip = addr_result
 
         cur.execute(address_query,
                     (a_street_num,a_street_name,a_city,a_state,a_zip,
@@ -394,7 +468,6 @@ def get_filtered_customers(filter_attributes: Customer = None, use_patterns: boo
 
     """
     
-    
     query = """
         SELECT c.c_customer_id, c.c_first_name, c.c_last_name, c.c_email_address,
                ca.ca_street_number, ca.ca_street_name, ca.ca_city, ca.ca_state, ca.ca_zip
@@ -405,15 +478,19 @@ def get_filtered_customers(filter_attributes: Customer = None, use_patterns: boo
     params = []
     op = "LIKE" if use_patterns else "="
 
+    # filter by customer_id
     if filter_attributes.customer_id is not None:
         query += f" AND c.c_customer_id {op} ?"
         params.append(filter_attributes.customer_id)
+    # filter by name
     if filter_attributes.name is not None:
         query += f" AND CONCAT(c.c_first_name, ' ', c.c_last_name) {op} ?"
         params.append(filter_attributes.name)
+    # filter by email
     if filter_attributes.email is not None:
         query += f" AND c.c_email_address {op} ?"
         params.append(filter_attributes.email)
+    # filter by address
     if filter_attributes.address is not None:
         query += f" AND CONCAT(ca.ca_street_number, ' ', ca.ca_street_name, ', ', ca.ca_city, ', ', ca.ca_state, ' ', ca.ca_zip) {op} ?"
         params.append(filter_attributes.address)
@@ -432,6 +509,20 @@ def get_filtered_customers(filter_attributes: Customer = None, use_patterns: boo
         ))
     return customers
 
+#row[0] = customer_id
+#row[1] = first_name
+#row[2] = last_name
+#row[3] = email
+#row[4] = street number
+#row[5] = street name
+#row[6] = city
+#row[7] = state
+#row[8] = zipcode
+
+
+
+
+
 # This was written by Abby
 def get_filtered_rentals(filter_attributes: Rental = None,
                          min_rental_date: str = None,
@@ -449,27 +540,35 @@ def get_filtered_rentals(filter_attributes: Rental = None,
     """
     params = []
 
+    # filter by item_id
     if filter_attributes.item_id is not None:
         query += f" AND item_id = ?"
         params.append(filter_attributes.item_id)
+    # filter by customer_id
     if filter_attributes.customer_id is not None:
         query += f" AND customer_id = ?"
         params.append(filter_attributes.customer_id)
+    # filter by rental_date
     if filter_attributes.rental_date is not None:
         query += f" AND rental_date = ?"
         params.append(filter_attributes.rental_date)
+    # filter by due_date (exact match)
     if filter_attributes.due_date is not None:
         query += f" AND due_date = ?"
         params.append(filter_attributes.due_date)
+    # filter by rentals on or after min_rental_date
     if min_rental_date is not None:
         query += " AND rental_date >= ?"
         params.append(min_rental_date)
+    # filter by rentals on or before max_rental_date
     if max_rental_date is not None:
         query += " AND rental_date <= ?"
         params.append(max_rental_date)
+    # filter by rentals on or after min_due_date
     if min_due_date is not None:
         query += " AND due_date >= ?"
         params.append(min_due_date)
+    # filter by rentals on or before max_due_date
     if max_due_date is not None:
         query += " AND due_date <= ?"
         params.append(max_due_date)
@@ -506,36 +605,47 @@ def get_filtered_rental_histories(filter_attributes: RentalHistory = None,
     """
     params = []
 
+    # filter by item_id
     if filter_attributes.item_id is not None:
         query += " AND item_id = ?"
         params.append(filter_attributes.item_id)
+    # filter by customer_id
     if filter_attributes.customer_id is not None:
         query += " AND customer_id = ?"
         params.append(filter_attributes.customer_id)
+    # filter by rental_date
     if filter_attributes.rental_date is not None:
         query += " AND rental_date = ?"
         params.append(filter_attributes.rental_date)
+    # filter by due_date
     if filter_attributes.due_date is not None:
         query += " AND due_date = ?"
         params.append(filter_attributes.due_date)
+    # filter by return_date
     if filter_attributes.return_date is not None:
         query += " AND return_date = ?"
         params.append(filter_attributes.return_date)
+    # filter by minimum rental date
     if min_rental_date is not None:
         query += " AND rental_date >= ?"
         params.append(min_rental_date)
+    # filter by maximum rental date
     if max_rental_date is not None:
         query += " AND rental_date <= ?"
         params.append(max_rental_date)
+    # filter by minimmum due date
     if min_due_date is not None:
         query += " AND due_date >= ?"
         params.append(min_due_date)
+    # filter by maximum due date
     if max_due_date is not None:
         query += " AND due_date <= ?"
         params.append(max_due_date)
+    # filter by minimum return date
     if min_return_date is not None:
         query += " AND return_date >= ?"
         params.append(min_return_date)
+    # filter by maximum return date
     if max_return_date is not None:
         query += " AND return_date <= ?"
         params.append(max_return_date)
@@ -565,18 +675,23 @@ def get_filtered_waitlist(filter_attributes: Waitlist = None,
     """
     params = []
 
+    # filter by item_id
     if filter_attributes.item_id is not None:
         query += " AND item_id = ?"
         params.append(filter_attributes.item_id)
+    # filter by customer_id
     if filter_attributes.customer_id is not None:
         query += " AND customer_id = ?"
         params.append(filter_attributes.customer_id)
+    # filter by place_in_line exact match
     if filter_attributes.place_in_line != -1:
         query += " AND place_in_line = ?"
         params.append(filter_attributes.place_in_line)
+    # filter by place_in_line is >=
     if min_place_in_line != -1:
         query += " AND place_in_line >= ?"
         params.append(min_place_in_line)
+    # filter by place_in_line is <=
     if max_place_in_line != -1:
         query += " AND place_in_line <= ?"
         params.append(max_place_in_line)
@@ -598,7 +713,7 @@ def number_in_stock(item_id: str = None) -> int:
     """
     Returns num_owned - active rentals. Returns -1 if item doesn't exist.
     """
-    
+    # Selects the amount of items that exist for a certain item id
     query = """
         SELECT i_num_owned
         FROM item
@@ -612,6 +727,7 @@ def number_in_stock(item_id: str = None) -> int:
 
     num_owned = row[0]
 
+    #  Selects the amount of items that are out on rental
     query = """
         SELECT COUNT(*)
         FROM rental
@@ -620,6 +736,7 @@ def number_in_stock(item_id: str = None) -> int:
     cur.execute(query, (item_id,))
     active_rentals = cur.fetchone()[0]
 
+    # By subtracting the total number of the item by the amount currently being rented, we get the number of those items that is in stock
     return num_owned - active_rentals
 
 # This was written by Abby
