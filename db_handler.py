@@ -235,10 +235,10 @@ def rent_item(item_id: str = None, customer_id: str = None):
     # query = f"Insert into Rental(item_id, customer_id, rental_date,due_date) VALUES ('{item_id}', '{customer_id}', '{date.today()}', '{date.today() + timedelta(days=14)}') "
     query = """
         INSERT INTO rental(item_id, customer_id, rental_date, due_date)
-        VALUES(?,?,?,?)
+        VALUES(?,?,CURDATE(),DATE_ADD(CURDATE(),INTERVAL 14 DAY))
     """
 
-    cur.execute(query,(item_id,customer_id,str(date.today()),str(date.today()+timedelta(days=14))))
+    cur.execute(query,(item_id,customer_id))
     return     # return nothing
 
     #raise NotImplementedError("you must implement this function")
@@ -297,12 +297,12 @@ def return_item(item_id: str = None, customer_id: str = None):
         ?,
         (SELECT rental_date FROM rental WHERE item_id = ? AND customer_id = ?),
         (SELECT due_date FROM rental WHERE item_id = ? AND customer_id = ?),
-        ?
+        CURDATE()
         )"""
 
     date_today = str(date.today()) # get today's date
 
-    cur.execute(insert_query, (item_id,customer_id,item_id,customer_id,item_id,customer_id,date_today))
+    cur.execute(insert_query, (item_id,customer_id,item_id,customer_id,item_id,customer_id))
     #1 - values 1 - item id
     #2 - values 2 - customer id
     #3 - values 3 - select 1 - rental date
@@ -339,10 +339,10 @@ def grant_extension(item_id: str = None, customer_id: str = None):
 
     query = """
         UPDATE rental
-        SET due_date  = ?
+        SET due_date  = DATE_ADD(due_date,INTERVAL 14 DAY)
         WHERE item_id = ? AND customer_id = ?    
     """
-    cur.execute(query, (new_due_date, item_id,customer_id))
+    cur.execute(query, (item_id,customer_id))
 
     return
 
